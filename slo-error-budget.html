@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLO Error Budget Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin-top: 0;
+            color: #333;
+        }
+        .description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .slider-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .slider-label {
+            font-weight: 600;
+            min-width: 140px;
+        }
+        .slider-value {
+            font-weight: 600;
+            min-width: 80px;
+            color: #333;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            cursor: pointer;
+        }
+        .cards-row {
+            display: flex;
+            gap: 10px;
+        }
+        .card {
+            flex: 1;
+            padding: 10px 15px;
+            border-radius: 6px;
+            color: white;
+        }
+        .card .label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .card .value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .card .sublabel {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        .burn-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f5;
+            border-radius: 6px;
+            border-left: 4px solid #9b59b6;
+        }
+        .burn-section .slider-label {
+            color: #9b59b6;
+        }
+        .burn-title {
+            font-weight: 600;
+            color: #9b59b6;
+            margin-bottom: 5px;
+        }
+        .burn-explanation {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .chart-container {
+            position: relative;
+            height: 450px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: right;
+            border-bottom: 1px solid #eee;
+        }
+        th:first-child, td:first-child {
+            text-align: left;
+        }
+        th {
+            background: #f9f9f9;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SLO Error Budget</h1>
+        <p class="description">
+            Error budget = (1 - SLO) × total events. Lines show the error budget for each SLO at different event volumes.
+        </p>
+
+        <div class="slider-section">
+            <div class="slider-row">
+                <span class="slider-label">Bad Events (30d):</span>
+                <input type="range" id="badEventsSlider" min="0" max="100" value="50">
+                <span class="slider-value" id="sliderValue">100</span>
+            </div>
+            <div class="cards-row">
+                <div class="card" style="background: #e74c3c;">
+                    <div class="label">99.95% SLO</div>
+                    <div class="value" id="min9995">200,000</div>
+                    <div class="sublabel">min events needed</div>
+                </div>
+                <div class="card" style="background: #f39c12;">
+                    <div class="label">99.9% SLO</div>
+                    <div class="value" id="min999">100,000</div>
+                    <div class="sublabel">min events needed</div>
+                </div>
+                <div class="card" style="background: #27ae60;">
+                    <div class="label">99.5% SLO</div>
+                    <div class="value" id="min995">20,000</div>
+                    <div class="sublabel">min events needed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slider-section burn-section">
+            <div class="burn-title">Burn Rate Alert Calculator</div>
+            <div class="burn-explanation">
+                Alert triggers when burn rate >2x for both 2h AND 24h windows.
+                You need at least the shown total events for this error burst to not trigger an alert.
+                Assumes events are evenly distributed across the 30-day window.
+            </div>
+            <div class="slider-row">
+                <span class="slider-label">Errors in 2h burst:</span>
+                <input type="range" id="errors2hSlider" min="0" max="75" value="25">
+                <span class="slider-value" id="errors2hValue">10</span>
+            </div>
+            <div class="cards-row">
+                <div class="card" style="background: #e74c3c;">
+                    <div class="label">99.95% SLO</div>
+                    <div class="value" id="minAlert9995">300,000</div>
+                    <div class="sublabel">min events to avoid alert</div>
+                </div>
+                <div class="card" style="background: #f39c12;">
+                    <div class="label">99.9% SLO</div>
+                    <div class="value" id="minAlert999">150,000</div>
+                    <div class="sublabel">min events to avoid alert</div>
+                </div>
+                <div class="card" style="background: #27ae60;">
+                    <div class="label">99.5% SLO</div>
+                    <div class="value" id="minAlert995">30,000</div>
+                    <div class="sublabel">min events to avoid alert</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Events</th>
+                    <th>99.95% Budget</th>
+                    <th>99.9% Budget</th>
+                    <th>99.5% Budget</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const eventVolumes = [1000, 10000, 100000, 1000000, 10000000];
+        const labels = ['1K', '10K', '100K', '1M', '10M'];
+
+        const slos = [
+            { level: 99.95, errorRate: 0.0005, color: '#e74c3c', label: '99.95%', minId: 'min9995', minAlertId: 'minAlert9995' },
+            { level: 99.9, errorRate: 0.001, color: '#f39c12', label: '99.9%', minId: 'min999', minAlertId: 'minAlert999' },
+            { level: 99.5, errorRate: 0.005, color: '#27ae60', label: '99.5%', minId: 'min995', minAlertId: 'minAlert995' }
+        ];
+
+        // Budget lines (solid) - 1x burn rate
+        const budgetDatasets = slos.map(slo => ({
+            label: `${slo.label} Budget`,
+            data: eventVolumes.map(v => v * slo.errorRate),
+            borderColor: slo.color,
+            backgroundColor: slo.color + '20',
+            borderWidth: 3,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            tension: 0.1
+        }));
+
+        const datasets = budgetDatasets;
+
+        // Exponential mapping for slider (1 to 10000)
+        function sliderToValue(sliderVal) {
+            return Math.round(Math.pow(10, sliderVal / 25));
+        }
+
+        function valueToSlider(value) {
+            return Math.log10(value) * 25;
+        }
+
+        let currentBadEvents = 100;
+        let currentErrors2h = 10;
+
+        const ctx = document.getElementById('chart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        type: 'logarithmic',
+                        title: { display: true, text: 'Errors' },
+                        ticks: {
+                            callback: v => v.toLocaleString()
+                        }
+                    },
+                    x: {
+                        title: { display: true, text: 'Event Volume' }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: ${Math.round(ctx.raw).toLocaleString()} errors`
+                        }
+                    },
+                    annotation: {
+                        annotations: {
+                            budgetLine: {
+                                type: 'line',
+                                yMin: currentBadEvents,
+                                yMax: currentBadEvents,
+                                borderColor: '#333',
+                                borderWidth: 2,
+                                borderDash: [6, 4],
+                                label: {
+                                    display: true,
+                                    content: `${currentBadEvents} errors (30d)`,
+                                    position: 'start',
+                                    backgroundColor: '#333',
+                                    color: 'white',
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        function updateBudgetDisplay(badEvents) {
+            currentBadEvents = badEvents;
+            document.getElementById('sliderValue').textContent = badEvents.toLocaleString();
+
+            slos.forEach(slo => {
+                const minEvents = Math.ceil(badEvents / slo.errorRate);
+                document.getElementById(slo.minId).textContent = minEvents.toLocaleString();
+            });
+
+            // Update reference line
+            chart.options.plugins.annotation.annotations.budgetLine.yMin = badEvents;
+            chart.options.plugins.annotation.annotations.budgetLine.yMax = badEvents;
+            chart.options.plugins.annotation.annotations.budgetLine.label.content = `${badEvents.toLocaleString()} errors (30d)`;
+            chart.update();
+        }
+
+        function updateAlertDisplay(errors2h) {
+            currentErrors2h = errors2h;
+            document.getElementById('errors2hValue').textContent = errors2h.toLocaleString();
+
+            // min_total_events = errors_2h × 15 / errorRate
+            slos.forEach(slo => {
+                const minEventsToAlert = Math.ceil(errors2h * 15 / slo.errorRate);
+                document.getElementById(slo.minAlertId).textContent = minEventsToAlert.toLocaleString();
+            });
+        }
+
+        // Initialize sliders
+        const badEventsSlider = document.getElementById('badEventsSlider');
+        badEventsSlider.value = valueToSlider(100);
+        badEventsSlider.addEventListener('input', (e) => {
+            updateBudgetDisplay(sliderToValue(parseFloat(e.target.value)));
+        });
+
+        const errors2hSlider = document.getElementById('errors2hSlider');
+        errors2hSlider.value = valueToSlider(10);
+        errors2hSlider.addEventListener('input', (e) => {
+            updateAlertDisplay(sliderToValue(parseFloat(e.target.value)));
+        });
+
+        // Initial display
+        updateBudgetDisplay(100);
+        updateAlertDisplay(10);
+
+        // Populate table
+        const tbody = document.getElementById('tableBody');
+        eventVolumes.forEach((vol, i) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${labels[i]}</td>
+                ${slos.map(slo => `<td>${Math.round(vol * slo.errorRate).toLocaleString()}</td>`).join('')}
+            `;
+            tbody.appendChild(row);
+        });
+    </script>
+</body>
+</html>
