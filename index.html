@@ -204,7 +204,14 @@
                 Assumes events evenly distributed across 30d. Burst during low traffic → need more events than shown. Burst during high traffic → need fewer.
             </div>
             <div class="slider-row">
-                <span class="slider-label">Errors in burst:</span>
+                <span class="slider-label">Errors in burst:
+                    <span class="info-tooltip">
+                        <span class="info-icon">?</span>
+                        <span class="tooltip-text">
+                            Assumes all errors occur within the shortest window (5m for fast burn, 2h for slow burn).
+                        </span>
+                    </span>
+                </span>
                 <input type="range" id="errors2hSlider" min="0" max="75" value="25">
                 <span class="slider-value" id="errors2hValue">10</span>
             </div>
