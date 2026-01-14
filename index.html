@@ -87,6 +87,14 @@
         .burn-section .slider-label {
             color: #9b59b6;
         }
+        .burn-subsection {
+            margin-top: 15px;
+        }
+        .burn-subsection.fast {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
         .burn-title {
             font-weight: 600;
             color: #9b59b6;
@@ -96,6 +104,44 @@
             font-size: 12px;
             color: #666;
             margin-bottom: 12px;
+        }
+        .info-tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 4px;
+            cursor: help;
+        }
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #9b59b6;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .info-tooltip .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            width: 280px;
+            z-index: 10;
+            transition: opacity 0.2s;
+        }
+        .info-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
         }
         .chart-container {
             position: relative;
@@ -154,31 +200,71 @@
 
         <div class="slider-section burn-section">
             <div class="burn-title">Burn Rate Alert Calculator</div>
-            <div class="burn-explanation">
-                Alert triggers when burn rate >2x for both 2h AND 24h windows.
-                You need at least the shown total events for this error burst to not trigger an alert.
-                Assumes events are evenly distributed across the 30-day window.
-            </div>
             <div class="slider-row">
-                <span class="slider-label">Errors in 2h burst:</span>
+                <span class="slider-label">Errors in burst:</span>
                 <input type="range" id="errors2hSlider" min="0" max="75" value="25">
                 <span class="slider-value" id="errors2hValue">10</span>
             </div>
-            <div class="cards-row">
-                <div class="card" style="background: #7c3aed;">
-                    <div class="label">99.95% SLO</div>
-                    <div class="value" id="minAlert9995">300,000</div>
-                    <div class="sublabel">min events to avoid alert</div>
+
+            <div class="burn-subsection">
+                <div class="burn-explanation">
+                    <strong>Slow burn</strong> — alert when >2x for both 2h AND 24h windows
+                    <span class="info-tooltip">
+                        <span class="info-icon">?</span>
+                        <span class="tooltip-text">
+                            <strong>min_events = errors × 15 / error_rate</strong><br><br>
+                            The 24h window is the binding constraint (2h always spikes during a burst).
+                            15 = 30d / 24h / 2x threshold.
+                        </span>
+                    </span>
                 </div>
-                <div class="card" style="background: #2563eb;">
-                    <div class="label">99.9% SLO</div>
-                    <div class="value" id="minAlert999">150,000</div>
-                    <div class="sublabel">min events to avoid alert</div>
+                <div class="cards-row">
+                    <div class="card" style="background: #7c3aed;">
+                        <div class="label">99.95% SLO</div>
+                        <div class="value" id="minAlert9995">300,000</div>
+                        <div class="sublabel">min events to avoid alert</div>
+                    </div>
+                    <div class="card" style="background: #2563eb;">
+                        <div class="label">99.9% SLO</div>
+                        <div class="value" id="minAlert999">150,000</div>
+                        <div class="sublabel">min events to avoid alert</div>
+                    </div>
+                    <div class="card" style="background: #14b8a6;">
+                        <div class="label">99.5% SLO</div>
+                        <div class="value" id="minAlert995">30,000</div>
+                        <div class="sublabel">min events to avoid alert</div>
+                    </div>
                 </div>
-                <div class="card" style="background: #14b8a6;">
-                    <div class="label">99.5% SLO</div>
-                    <div class="value" id="minAlert995">30,000</div>
-                    <div class="sublabel">min events to avoid alert</div>
+            </div>
+
+            <div class="burn-subsection fast">
+                <div class="burn-explanation">
+                    <strong>Fast burn</strong> — alert when >5x for both 5m AND 1h windows
+                    <span class="info-tooltip fast">
+                        <span class="info-icon">?</span>
+                        <span class="tooltip-text">
+                            <strong>min_events = errors × 144 / error_rate</strong><br><br>
+                            The 1h window is the binding constraint (5m always spikes during a burst).
+                            144 = 720h / 1h / 5x threshold.
+                        </span>
+                    </span>
+                </div>
+                <div class="cards-row">
+                    <div class="card" style="background: #7c3aed;">
+                        <div class="label">99.95% SLO</div>
+                        <div class="value" id="minFast9995">300,000</div>
+                        <div class="sublabel">min events to avoid alert</div>
+                    </div>
+                    <div class="card" style="background: #2563eb;">
+                        <div class="label">99.9% SLO</div>
+                        <div class="value" id="minFast999">150,000</div>
+                        <div class="sublabel">min events to avoid alert</div>
+                    </div>
+                    <div class="card" style="background: #14b8a6;">
+                        <div class="label">99.5% SLO</div>
+                        <div class="value" id="minFast995">30,000</div>
+                        <div class="sublabel">min events to avoid alert</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -204,9 +290,9 @@
         const labels = ['1K', '10K', '100K', '1M', '10M'];
 
         const slos = [
-            { level: 99.95, errorRate: 0.0005, color: '#7c3aed', label: '99.95%', minId: 'min9995', minAlertId: 'minAlert9995' },
-            { level: 99.9, errorRate: 0.001, color: '#2563eb', label: '99.9%', minId: 'min999', minAlertId: 'minAlert999' },
-            { level: 99.5, errorRate: 0.005, color: '#14b8a6', label: '99.5%', minId: 'min995', minAlertId: 'minAlert995' }
+            { level: 99.95, errorRate: 0.0005, color: '#7c3aed', label: '99.95%', minId: 'min9995', minAlertId: 'minAlert9995', minFastId: 'minFast9995' },
+            { level: 99.9, errorRate: 0.001, color: '#2563eb', label: '99.9%', minId: 'min999', minAlertId: 'minAlert999', minFastId: 'minFast999' },
+            { level: 99.5, errorRate: 0.005, color: '#14b8a6', label: '99.5%', minId: 'min995', minAlertId: 'minAlert995', minFastId: 'minFast995' }
         ];
 
         // Budget lines (solid) - 1x burn rate
@@ -300,14 +386,18 @@
             chart.update();
         }
 
-        function updateAlertDisplay(errors2h) {
-            currentErrors2h = errors2h;
-            document.getElementById('errors2hValue').textContent = errors2h.toLocaleString();
+        function updateAlertDisplay(errorsBurst) {
+            currentErrors2h = errorsBurst;
+            document.getElementById('errors2hValue').textContent = errorsBurst.toLocaleString();
 
-            // min_total_events = errors_2h × 15 / errorRate
             slos.forEach(slo => {
-                const minEventsToAlert = Math.ceil(errors2h * 15 / slo.errorRate);
-                document.getElementById(slo.minAlertId).textContent = minEventsToAlert.toLocaleString();
+                // Slow burn: min_total_events = errors × 15 / errorRate (30d/24h/2x)
+                const minEventsSlow = Math.ceil(errorsBurst * 15 / slo.errorRate);
+                document.getElementById(slo.minAlertId).textContent = minEventsSlow.toLocaleString();
+
+                // Fast burn: min_total_events = errors × 144 / errorRate (720h/1h/5x)
+                const minEventsFast = Math.ceil(errorsBurst * 144 / slo.errorRate);
+                document.getElementById(slo.minFastId).textContent = minEventsFast.toLocaleString();
             });
         }
 
